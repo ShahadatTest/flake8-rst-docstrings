@@ -79,7 +79,7 @@ def test_expected_failures(modpath, expected_failure):
     )
     if result_check:
         modpath = os.path.join(modpath, "")
-        assert out.replace(modpath, "    ") == result_check
+        assert out.replace(modpath, "    ").replace(os.sep, "/") == result_check
 
 
 def test_expected_successes(modpath):
@@ -135,3 +135,20 @@ def test_version():
         b"rst-docstrings:" in out or b"rst-\ndocstrings:" in out
     ), "should appear in flake8 version string"
     assert not err
+
+
+@pytest.mark.parametrize(
+    "definition", ["", "class Example:\n", "def example():\n", "async def example():\n"]
+)
+@pytest.mark.parametrize("leading_blank_lines", [0, 1, 3])
+def test_leading_blank_line_locations(tmp_path, definition, leading_blank_lines):
+    """Report the source line after leading blank lines are cleaned away."""
+    indent = "    " if definition else ""
+    source = definition + indent + '"""' + "\n" * leading_blank_lines
+    source += indent + "Unclosed **strong\n" + indent + '"""\n'
+    path = tmp_path / "leading_blank_lines.py"
+    path.write_text(source, encoding="utf-8")
+    expected_line = source[: source.index("Unclosed")].count("\n") + 1
+    retcode, out = flake8(str(path))
+    assert retcode == 1, out
+    assert f":{expected_line}:1: RST210 " in out

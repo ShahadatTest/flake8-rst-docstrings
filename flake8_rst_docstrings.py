@@ -238,6 +238,12 @@ class reStructuredTextChecker:
                         node.body[0].lineno,
                         docstring,
                     )
+                    # cleandoc removes leading empty lines, but diagnostics
+                    # must still refer to the original source positions.
+                    for line in ast.get_docstring(node, clean=False).split("\n"):
+                        if line.strip():
+                            break
+                        start += 1
                 for rst_error in rst_errors:
                     # TODO - make this a configuration option?
                     if rst_error.level <= 1:
